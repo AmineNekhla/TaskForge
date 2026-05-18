@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>TaskForge — Project Manager</title>
+<meta name="description" content="Kanban-style project management tool with drag-and-drop tasks, priorities, and team collaboration."/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<style>
+:root{--bg:#0d0d14;--bg2:#13131f;--bg3:#1a1a2e;--card:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);--text:#e8e8ed;--muted:#9a9ab0;--dim:#5a5a70;--accent:#4f8ef7;--accent2:#7c3aed;--green:#10b981;--yellow:#f59e0b;--red:#ef4444;--pink:#ec4899;--r:12px;--tr:0.2s ease}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+/* Layout */
+.app{display:grid;grid-template-rows:56px 1fr;height:100vh}
+/* Topbar */
+.topbar{display:flex;align-items:center;gap:16px;padding:0 20px;background:var(--bg2);border-bottom:1px solid var(--border);z-index:100}
+.topbar-logo{font-size:1.15rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-right:8px}
+.topbar-project{display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:500;color:var(--muted)}
+.topbar-project span{color:var(--text)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.stat-pill{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:.78rem;color:var(--muted)}
+.stat-pill strong{color:var(--text)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;border:none;font-family:'Inter',sans-serif;transition:var(--tr)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+.avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0}
+/* Board */
+.board-wrap{overflow-x:auto;padding:20px;display:flex;gap:16px;align-items:flex-start;height:100%}
+.column{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:280px;min-width:280px;display:flex;flex-direction:column;max-height:calc(100vh - 96px);overflow:hidden}
+.col-header{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.col-dot{width:10px;height:10px;border-radius:50%}
+.col-title{font-size:.85rem;font-weight:600}
+.col-count{margin-left:auto;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:.72rem;color:var(--muted);font-weight:600}
+.col-add{margin-left:6px;background:none;border:none;color:var(--dim);cursor:pointer;font-size:.9rem;transition:var(--tr)}
+.col-add:hover{color:var(--accent)}
+.col-body{padding:10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;min-height:60px}
+/* Cards */
+.task-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:grab;transition:var(--tr);user-select:none}
+.task-card:hover{border-color:rgba(79,142,247,0.35);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+.task-card.dragging{opacity:.5;cursor:grabbing}
+.task-card.drag-over{border-color:var(--accent);background:rgba(79,142,247,0.06)}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:.68rem;font-weight:600;margin-bottom:8px}
+.task-title{font-size:.88rem;font-weight:600;line-height:1.4;margin-bottom:8px}
+.task-desc{font-size:.77rem;color:var(--muted);line-height:1.5;margin-bottom:10px}
+.task-footer{display:flex;align-items:center;gap:6px}
+.task-avatars{display:flex;margin-right:auto}
+.task-avatars .avatar{width:22px;height:22px;font-size:.6rem;border:2px solid var(--bg3);margin-right:-6px}
+.task-due{font-size:.7rem;color:var(--dim);display:flex;align-items:center;gap:3px}
+.task-due.overdue{color:var(--red)}
+.priority-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+/* Drop zone */
+.drop-zone{border:2px dashed var(--border);border-radius:8px;min-height:48px;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--dim);transition:var(--tr)}
+.drop-zone.active{border-color:var(--accent);background:rgba(79,142,247,0.05);color:var(--accent)}
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:var(--tr)}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:480px;transform:translateY(20px);transition:var(--tr)}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal-title{font-size:1.1rem;font-weight:700;margin-bottom:20px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:.8rem;font-weight:500;color:var(--muted);margin-bottom:6px}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,0.03);color:var(--text);font-family:'Inter',sans-serif;font-size:.87rem;outline:none;transition:var(--tr)}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--accent)}
+.form-group textarea{height:80px;resize:none}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.btn-ghost{background:var(--card);border:1px solid var(--border);color:var(--muted)}
+.btn-ghost:hover{color:var(--text);border-color:var(--muted)}
+/* Progress bar */
+.progress-bar{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.progress-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s ease}
+/* Notification */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#fff;padding:12px 20px;border-radius:10px;font-size:.85rem;font-weight:600;z-index:300;transform:translateY(60px);opacity:0;transition:var(--tr)}
+.toast.show{transform:translateY(0);opacity:1}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-logo"><i class="fa-solid fa-layer-group"></i> TaskForge</div>
+    <div class="topbar-project"><i class="fa-solid fa-chevron-right" style="font-size:.65rem"></i><span>Portfolio Dashboard</span></div>
+    <div class="topbar-right">
+      <div class="stat-pill"><i class="fa-solid fa-circle-check" style="color:var(--green)"></i> <strong id="doneCount">0</strong> Done</div>
+      <div class="stat-pill"><i class="fa-solid fa-spinner" style="color:var(--accent)"></i> <strong id="inprogCount">0</strong> In Progress</div>
+      <div class="stat-pill"><i class="fa-solid fa-flag" style="color:var(--red)"></i> <strong id="totalCount">0</strong> Total</div>
+      <button class="btn btn-primary" id="openModalBtn"><i class="fa-solid fa-plus"></i> New Task</button>
+      <div class="avatar" style="background:linear-gradient(135deg,#4f8ef7,#7c3aed)">AN</div>
+    </div>
+  </div>
+  <!-- BOARD -->
+  <div class="board-wrap" id="board">
+    <div class="column" data-col="backlog">
+      <div class="col-header">
+        <div class="col-dot" style="background:#64748b"></div>
+        <span class="col-title">Backlog</span>
+        <span class="col-count" id="cnt-backlog">0</span>
+        <button class="col-add" onclick="openModal('backlog')"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <div class="col-body" id="col-backlog" ondragover="onDragOver(event)" ondrop="onDrop(event,'backlog')" ondragleave="onDragLeave(event)"></div>
+    </div>
+    <div class="column" data-col="todo">
+      <div class="col-header">
+        <div class="col-dot" style="background:#f59e0b"></div>
+        <span class="col-title">To Do</span>
+        <span class="col-count" id="cnt-todo">0</span>
+        <button class="col-add" onclick="openModal('todo')"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <div class="col-body" id="col-todo" ondragover="onDragOver(event)" ondrop="onDrop(event,'todo')" ondragleave="onDragLeave(event)"></div>
+    </div>
+    <div class="column" data-col="inprog">
+      <div class="col-header">
+        <div class="col-dot" style="background:#4f8ef7"></div>
+        <span class="col-title">In Progress</span>
+        <span class="col-count" id="cnt-inprog">0</span>
+        <button class="col-add" onclick="openModal('inprog')"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <div class="col-body" id="col-inprog" ondragover="onDragOver(event)" ondrop="onDrop(event,'inprog')" ondragleave="onDragLeave(event)"></div>
+    </div>
+    <div class="column" data-col="done">
+      <div class="col-header">
+        <div class="col-dot" style="background:#10b981"></div>
+        <span class="col-title">Done</span>
+        <span class="col-count" id="cnt-done">0</span>
+        <button class="col-add" onclick="openModal('done')"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <div class="col-body" id="col-done" ondragover="onDragOver(event)" ondrop="onDrop(event,'done')" ondragleave="onDragLeave(event)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Create New Task</div>
+    <div class="form-group">
+      <label>Task Title *</label>
+      <input type="text" id="taskTitle" placeholder="e.g. Design landing page"/>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="taskDesc" placeholder="What needs to be done?"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="taskPriority">
+          <option value="low">🟢 Low</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="high">🔴 High</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Column</label>
+        <select id="taskColumn">
+          <option value="backlog">Backlog</option>
+          <option value="todo">To Do</option>
+          <option value="inprog">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" id="taskDue"/>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="taskTag">
+          <option value="Design">Design</option>
+          <option value="Frontend">Frontend</option>
+          <option value="Backend">Backend</option>
+          <option value="Mobile">Mobile</option>
+          <option value="Bug">Bug</option>
+          <option value="Research">Research</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveTask()"><i class="fa-solid fa-check"></i> Save Task</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const COLORS={low:'#10b981',medium:'#f59e0b',high:'#ef4444'};
+const TAGCOLORS={Design:'rgba(236,72,153,.15)',Frontend:'rgba(79,142,247,.15)',Backend:'rgba(124,58,237,.15)',Mobile:'rgba(16,185,129,.15)',Bug:'rgba(239,68,68,.15)',Research:'rgba(245,158,11,.15)'};
+const TAGTEXT={Design:'#ec4899',Frontend:'#4f8ef7',Backend:'#a78bfa',Mobile:'#10b981',Bug:'#ef4444',Research:'#f59e0b'};
+const AVATARS=[
+  {init:'YB',col:'#4f8ef7'},{init:'KE',col:'#7c3aed'},{init:'SN',col:'#10b981'},{init:'AN',col:'#f59e0b'}
+];
+
+let tasks=[], dragId=null, editId=null;
+
+const defaultTasks=[
+  {id:'1',title:'Design system components',desc:'Create reusable UI components for the app.',priority:'high',col:'inprog',due:'2026-05-25',tag:'Design',avatars:[0,1]},
+  {id:'2',title:'API authentication flow',desc:'Implement JWT login and refresh tokens.',priority:'high',col:'inprog',due:'2026-05-22',tag:'Backend',avatars:[1]},
+  {id:'3',title:'Mobile responsive fixes',desc:'Fix layout issues on small screens.',priority:'medium',col:'todo',due:'2026-05-28',tag:'Mobile',avatars:[2]},
+  {id:'4',title:'Write unit tests',desc:'Cover core utilities with Jest.',priority:'low',col:'backlog',due:'2026-06-01',tag:'Backend',avatars:[0,3]},
+  {id:'5',title:'Landing page copy',desc:'Write hero and features copy.',priority:'medium',col:'todo',due:'2026-05-24',tag:'Design',avatars:[2,3]},
+  {id:'6',title:'Setup CI/CD pipeline',desc:'GitHub Actions for auto deploy.',priority:'low',col:'backlog',due:'2026-06-05',tag:'Backend',avatars:[1]},
+  {id:'7',title:'User onboarding flow',desc:'Design onboarding screens.',priority:'medium',col:'done',due:'2026-05-18',tag:'Design',avatars:[0]},
+  {id:'8',title:'Bug: form validation',desc:'Fix email validation on signup.',priority:'high',col:'done',due:'2026-05-17',tag:'Bug',avatars:[3]},
+  {id:'9',title:'Database schema review',desc:'Review and optimize indexes.',priority:'low',col:'backlog',due:'2026-06-10',tag:'Research',avatars:[1,2]},
+];
+
+function load(){
+  const saved=localStorage.getItem('taskforge_tasks');
+  tasks=saved?JSON.parse(saved):[...defaultTasks];
+  render();
+}
+function save(){localStorage.setItem('taskforge_tasks',JSON.stringify(tasks));}
+
+function render(){
+  ['backlog','todo','inprog','done'].forEach(col=>{
+    const el=document.getElementById('col-'+col);
+    const colTasks=tasks.filter(t=>t.col===col);
+    document.getElementById('cnt-'+col).textContent=colTasks.length;
+    el.innerHTML='';
+    colTasks.forEach(t=>{
+      el.appendChild(makeCard(t));
+    });
+    // drop zone hint
+    const dz=document.createElement('div');
+    dz.className='drop-zone';
+    dz.id='dz-'+col;
+    dz.textContent='Drop here';
+    el.appendChild(dz);
+  });
+  updateStats();
+}
+
+function makeCard(t){
+  const card=document.createElement('div');
+  card.className='task-card';
+  card.draggable=true;
+  card.dataset.id=t.id;
+  const dueStr=t.due?formatDue(t.due):'';
+  const isOverdue=t.due&&new Date(t.due)<new Date()&&t.col!=='done';
+  card.innerHTML=`
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <div class="tag" style="background:${TAGCOLORS[t.tag]||'rgba(255,255,255,.08)'};color:${TAGTEXT[t.tag]||'#9a9ab0'}">
+        ${t.tag}
+      </div>
+      <div class="priority-dot" style="background:${COLORS[t.priority]};margin-left:auto" title="${t.priority} priority"></div>
+    </div>
+    <div class="task-title">${t.title}</div>
+    ${t.desc?`<div class="task-desc">${t.desc}</div>`:''}
+    <div class="task-footer">
+      <div class="task-avatars">${(t.avatars||[]).slice(0,3).map(i=>`<div class="avatar" style="background:${AVATARS[i].col}">${AVATARS[i].init}</div>`).join('')}</div>
+      ${dueStr?`<div class="task-due${isOverdue?' overdue':''}"><i class="fa-regular fa-calendar"></i>${dueStr}</div>`:''}
+      <button onclick="deleteTask('${t.id}')" style="background:none;border:none;color:var(--dim);cursor:pointer;padding:2px 4px;margin-left:6px;border-radius:4px;transition:var(--tr)" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--dim)'"><i class="fa-solid fa-trash-can" style="font-size:.7rem"></i></button>
+      <button onclick="openEditModal('${t.id}')" style="background:none;border:none;color:var(--dim);cursor:pointer;padding:2px 4px;border-radius:4px;transition:var(--tr)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--dim)'"><i class="fa-solid fa-pen" style="font-size:.7rem"></i></button>
+    </div>`;
+  card.addEventListener('dragstart',e=>{dragId=t.id;setTimeout(()=>card.classList.add('dragging'),0);});
+  card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+  return card;
+}
+
+function formatDue(d){
+  const date=new Date(d);
+  return date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+function onDragOver(e){
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+  const dz=e.currentTarget.querySelector('.drop-zone');
+  if(dz)dz.classList.add('active');
+}
+function onDragLeave(e){
+  e.currentTarget.classList.remove('drag-over');
+  const dz=e.currentTarget.querySelector('.drop-zone');
+  if(dz)dz.classList.remove('active');
+}
+function onDrop(e,col){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(dragId){
+    const t=tasks.find(x=>x.id===dragId);
+    if(t){t.col=col;save();render();showToast('Task moved!');}
+    dragId=null;
+  }
+}
+
+function updateStats(){
+  document.getElementById('doneCount').textContent=tasks.filter(t=>t.col==='done').length;
+  document.getElementById('inprogCount').textContent=tasks.filter(t=>t.col==='inprog').length;
+  document.getElementById('totalCount').textContent=tasks.length;
+}
+
+// Modal
+function openModal(col='todo'){
+  editId=null;
+  document.getElementById('modalTitle').textContent='Create New Task';
+  document.getElementById('saveBtn').innerHTML='<i class="fa-solid fa-check"></i> Save Task';
+  document.getElementById('taskTitle').value='';
+  document.getElementById('taskDesc').value='';
+  document.getElementById('taskPriority').value='medium';
+  document.getElementById('taskColumn').value=col;
+  document.getElementById('taskDue').value='';
+  document.getElementById('taskTag').value='Frontend';
+  document.getElementById('modalBg').classList.add('open');
+}
+function openEditModal(id){
+  const t=tasks.find(x=>x.id===id);
+  if(!t)return;
+  editId=id;
+  document.getElementById('modalTitle').textContent='Edit Task';
+  document.getElementById('saveBtn').innerHTML='<i class="fa-solid fa-check"></i> Update Task';
+  document.getElementById('taskTitle').value=t.title;
+  document.getElementById('taskDesc').value=t.desc||'';
+  document.getElementById('taskPriority').value=t.priority;
+  document.getElementById('taskColumn').value=t.col;
+  document.getElementById('taskDue').value=t.due||'';
+  document.getElementById('taskTag').value=t.tag||'Frontend';
+  document.getElementById('modalBg').classList.add('open');
+}
+function closeModal(){document.getElementById('modalBg').classList.remove('open');}
+function saveTask(){
+  const title=document.getElementById('taskTitle').value.trim();
+  if(!title)return;
+  if(editId){
+    const t=tasks.find(x=>x.id===editId);
+    t.title=title;t.desc=document.getElementById('taskDesc').value.trim();
+    t.priority=document.getElementById('taskPriority').value;
+    t.col=document.getElementById('taskColumn').value;
+    t.due=document.getElementById('taskDue').value;
+    t.tag=document.getElementById('taskTag').value;
+    showToast('Task updated!');
+  } else {
+    tasks.push({id:Date.now()+'',title,desc:document.getElementById('taskDesc').value.trim(),
+      priority:document.getElementById('taskPriority').value,col:document.getElementById('taskColumn').value,
+      due:document.getElementById('taskDue').value,tag:document.getElementById('taskTag').value,
+      avatars:[Math.floor(Math.random()*4)]});
+    showToast('Task created!');
+  }
+  save();render();closeModal();
+}
+function deleteTask(id){tasks=tasks.filter(x=>x.id!==id);save();render();showToast('Task deleted.');}
+
+document.getElementById('openModalBtn').onclick=()=>openModal('todo');
+document.getElementById('modalBg').addEventListener('click',e=>{if(e.target===document.getElementById('modalBg'))closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+load();
+</script>
+</body>
+</html>
